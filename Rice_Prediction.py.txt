@@ -1,0 +1,306 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVR
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+import seaborn as sns
+from scipy.stats import gaussian_kde
+
+# Load the CSV file
+data = pd.read_csv('D:\\Python\gcp10_main.csv')
+
+# Remove columns with any NaN values
+data = data.dropna(axis=1)
+
+# Save the cleaned DataFrame back to CSV
+#data.to_csv('cleaned_file.csv', index=False)
+
+
+# View the first few rows
+print(data.head())
+
+# Define features (X) and target (y)
+X = data.drop(columns=['rice_production'])
+y = data['rice_production']
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Standardize the feature variables (important for SVM)
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Initialize and train the SVM model
+svm_model = SVR(kernel='rbf', C=1.0, epsilon=0.1)
+svm_model.fit(X_train_scaled, y_train)
+
+# Make predictions
+y_pred_svm = svm_model.predict(X_test_scaled)
+
+# Evaluate the model
+print("SVM R2 Score:", r2_score(y_test, y_pred_svm))
+print("SVM Mean Squared Error:", mean_squared_error(y_test, y_pred_svm))
+
+
+
+# Initialize and train the GBM model
+gbm_model = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_depth=3, random_state=42)
+gbm_model.fit(X_train, y_train)
+
+# Make predictions
+y_pred_gbm = gbm_model.predict(X_test)
+
+# Evaluate the model
+print("GBM R2 Score:", r2_score(y_test, y_pred_gbm))
+print("GBM Mean Squared Error:", mean_squared_error(y_test, y_pred_gbm))
+
+
+
+# Initialize and train the Random Forest model
+rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
+rf_model.fit(X_train, y_train)
+
+# Make predictions
+y_pred_rf = rf_model.predict(X_test)
+
+# Evaluate the model
+print("Random Forest R2 Score:", r2_score(y_test, y_pred_rf))
+print("Random Forest Mean Squared Error:", mean_squared_error(y_test, y_pred_rf))
+
+
+
+# Linear Regression
+lr_model = LinearRegression()
+lr_model.fit(X_train, y_train)
+y_pred_lr = lr_model.predict(X_test)
+
+# Evaluate Linear Regression Model
+r2_lr = r2_score(y_test, y_pred_lr)
+mse_lr = mean_squared_error(y_test, y_pred_lr)
+print(f'Linear Regression - R2 Score: {r2_lr}, MSE: {mse_lr}')
+
+
+
+print("Model Comparison:")
+print(f"SVM: R2 Score = {r2_score(y_test, y_pred_svm):.3f}, MSE = {mean_squared_error(y_test, y_pred_svm):.3f}")
+print(f"GBM: R2 Score = {r2_score(y_test, y_pred_gbm):.3f}, MSE = {mean_squared_error(y_test, y_pred_gbm):.3f}")
+print(f"Random Forest: R2 Score = {r2_score(y_test, y_pred_rf):.3f}, MSE = {mean_squared_error(y_test, y_pred_rf):.3f}")
+print(f"Linear Regression: R2 Score = {r2_score(y_test, y_pred_lr):.3f}, MSE = {mean_squared_error(y_test, y_pred_lr):.3f}")
+
+
+# Assuming y_test and y_pred_RF are available
+plt.scatter(y_test, y_pred_rf, color='blue')
+plt.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], color='red') # line of perfect prediction
+plt.xlabel('Actual Rice Production')
+plt.ylabel('Predicted Rice Production')
+plt.title('Actual vs Predicted - Random Forest')
+plt.show()
+
+
+
+
+# Calculate the point density for RF
+xy = np.vstack([y_test, y_pred_rf])
+z = gaussian_kde(xy)(xy)
+
+# Create a scatter plot
+plt.figure(figsize=(6, 4))
+scatter = plt.scatter(y_test, y_pred_rf, c=z, s=10, cmap='viridis')
+
+# Add a colorbar
+plt.colorbar(scatter, label='Density')
+
+# Add the regression line (best fit line)
+sns.regplot(x=y_test, y=y_pred_rf, scatter=False, color='red', label='Regression Line')
+
+# Plot the 1:1 line
+plt.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'k--', label='1:1 Line')
+
+# Add text for equation and stats
+m, b = np.polyfit(y_test, y_pred_rf, 1)
+corr = np.corrcoef(y_test, y_pred_rf)[0, 1]
+r2 = r2_score(y_test, y_pred_rf)
+rmse = np.sqrt(mean_squared_error(y_test, y_pred_rf))
+plt.text(0.1 * max(y_test), 0.8 * max(y_pred_rf), f'Corr = {corr:.2f}\nR² = {r2:.2f}\nRMSE = {rmse:.2f}')
+
+# Add labels and title
+plt.xlabel('Actual Rice Production (kiloton)')
+plt.ylabel('Predicted Rice Production (kiloton)')
+plt.title('Rice Production Predictions with Random Forest')
+
+plt.legend()
+plt.show()
+
+
+
+
+# Calculate the point density for GBM
+xy = np.vstack([y_test, y_pred_gbm])
+z = gaussian_kde(xy)(xy)
+
+# Create a scatter plot
+plt.figure(figsize=(6, 4))
+scatter = plt.scatter(y_test, y_pred_gbm, c=z, s=10, cmap='viridis')
+
+# Add a colorbar
+plt.colorbar(scatter, label='Density')
+
+# Add the regression line (best fit line)
+sns.regplot(x=y_test, y=y_pred_gbm, scatter=False, color='red', label='Regression Line')
+
+# Plot the 1:1 line
+plt.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'k--', label='1:1 Line')
+
+# Add text for equation and stats
+m, b = np.polyfit(y_test, y_pred_gbm, 1)
+corr = np.corrcoef(y_test, y_pred_gbm)[0, 1]
+r2 = r2_score(y_test, y_pred_gbm)
+rmse = np.sqrt(mean_squared_error(y_test, y_pred_gbm))
+plt.text(0.1 * max(y_test), 0.8 * max(y_pred_gbm), f'Corr = {corr:.2f}\nR² = {r2:.2f}\nRMSE = {rmse:.2f}')
+
+# Add labels and title
+plt.xlabel('Actual Rice Production (kiloton)')
+plt.ylabel('Predicted Rice Production (kiloton)')
+plt.title('Rice Production Predictions with Gradiant Boost Machine')
+
+plt.legend()
+plt.show()
+
+
+# Calculate the point density for SVM
+xy = np.vstack([y_test, y_pred_svm])
+z = gaussian_kde(xy)(xy)
+
+# Create a scatter plot
+plt.figure(figsize=(6, 4))
+scatter = plt.scatter(y_test, y_pred_svm, c=z, s=10, cmap='viridis')
+
+# Add a colorbar
+plt.colorbar(scatter, label='Density')
+
+# Add the regression line (best fit line)
+sns.regplot(x=y_test, y=y_pred_svm, scatter=False, color='red', label='Regression Line')
+
+# Plot the 1:1 line
+plt.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'k--', label='1:1 Line')
+
+# Add text for equation and stats
+m, b = np.polyfit(y_test, y_pred_svm, 1)
+corr = np.corrcoef(y_test, y_pred_svm)[0, 1]
+r2 = r2_score(y_test, y_pred_svm)
+rmse = np.sqrt(mean_squared_error(y_test, y_pred_svm))
+plt.text(0.1 * max(y_test), 0.8 * max(y_pred_svm), f'Corr = {corr:.2f}\nR² = {r2:.2f}\nRMSE = {rmse:.2f}')
+
+# Add labels and title
+plt.xlabel('Actual Rice Production (kiloton)')
+plt.ylabel('Predicted Rice Production (kiloton)')
+plt.title('Rice Production Predictions with Support Vector Machine')
+
+plt.legend()
+plt.show()
+
+
+# Calculate the point density for LR
+xy = np.vstack([y_test, y_pred_lr])
+z = gaussian_kde(xy)(xy)
+
+# Create a scatter plot
+plt.figure(figsize=(6, 4))
+scatter = plt.scatter(y_test, y_pred_lr, c=z, s=10, cmap='viridis')
+
+# Add a colorbar
+plt.colorbar(scatter, label='Density')
+
+# Add the regression line (best fit line)
+sns.regplot(x=y_test, y=y_pred_lr, scatter=False, color='red', label='Regression Line')
+
+# Plot the 1:1 line
+plt.plot([min(y_test), max(y_test)], [min(y_test), max(y_test)], 'k--', label='1:1 Line')
+
+# Add text for equation and stats
+m, b = np.polyfit(y_test, y_pred_lr, 1)
+corr = np.corrcoef(y_test, y_pred_lr)[0, 1]
+r2 = r2_score(y_test, y_pred_lr)
+rmse = np.sqrt(mean_squared_error(y_test, y_pred_lr))
+plt.text(0.1 * max(y_test), 0.8 * max(y_pred_lr), f'Corr = {corr:.2f}\nR² = {r2:.2f}\nRMSE = {rmse:.2f}')
+
+# Add labels and title
+plt.xlabel('Actual Rice Production (kiloton)')
+plt.ylabel('Predicted Rice Production (kiloton)')
+plt.title('Rice Production Predictions with Linear Regression')
+
+plt.legend()
+plt.show()
+
+
+
+
+
+
+
+
+residuals = y_test - y_pred_rf
+plt.scatter(y_pred_rf, residuals, color='green')
+plt.axhline(y=0, color='red', linestyle='--')
+plt.xlabel('Predicted Values')
+plt.ylabel('Residuals')
+plt.title('Residual Plot - RF')
+plt.show()
+
+residuals_svm = y_test - y_pred_svm
+residuals_gbm = y_test - y_pred_gbm
+residuals_rf = y_test - y_pred_rf
+residuals_lr = y_test - y_pred_lr
+
+# Combine residuals for all models
+residuals = [residuals_svm, residuals_gbm, residuals_rf, residuals_lr]
+models = ['SVM', 'GBM', 'Random Forest', 'Linear Regression']
+plt.boxplot(residuals, labels=models)
+plt.xlabel('Models')
+plt.ylabel('Residuals')
+plt.title('Residuals Comparison')
+plt.show()
+
+
+
+# Example of generating some dummy data
+np.random.seed(42)
+predictions_rf = y_test + y_pred_rf
+predictions_svm = y_test + y_pred_svm
+predictions_gbm = y_test + y_pred_gbm
+predictions_lr = y_test + y_pred_lr
+
+# Creating a DataFrame to organize the data
+data = pd.DataFrame({
+    'Actual': y_test,
+    'Random Forest': predictions_rf,
+    'SVM': predictions_svm,
+    'GBM': predictions_gbm,
+    'Linear Regression': predictions_lr,
+})
+
+# Melting the DataFrame to have one prediction column
+data_melted = data.melt(id_vars='Actual', var_name='Model', value_name='Prediction')
+
+# Plotting the Raincloud plot (density + boxplot)
+plt.figure(figsize=(6, 4))
+sns.violinplot(x='Model', y='Prediction', data=data_melted, inner=None, linewidth=0.8)
+sns.stripplot(x='Model', y='Prediction', data=data_melted, jitter=True, color='k', alpha=0.4, size=2)
+sns.boxplot(x='Model', y='Prediction', data=data_melted, width=0.1, showcaps=True, boxprops={'zorder': 10})
+
+# Customizing the plot
+plt.title('Box Plot for Rice Yield Prediction by Different Models')
+plt.ylabel('Rice Yield Prediction')
+plt.xlabel('Model')
+plt.grid(True)
+plt.show()
+
+
